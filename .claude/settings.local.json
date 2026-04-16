@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create:*)",
+      "Bash(npm install:*)",
+      "Read(//c/Users/pc/.claude/plugins/**)",
+      "Read(//c/Users/pc/.claude/**)",
+      "mcp__plugin_figma_figma__get_design_context",
+      "Bash(npm list:*)",
+      "Bash(node -e ':*)",
+      "Bash(grep -v \"Use \\\\`node\")",
+      "Bash(node server/test.js)",
+      "Bash(pkill -f \"server/index.js\")",
+      "Bash(pkill -f \"vite\")",
+      "Bash(xargs kill:*)",
+      "Bash(node server/index.js)",
+      "Bash(curl -s -X POST http://localhost:3001/api/analyze -H 'Content-Type: application/json' -d '{\"inputText\": \"a lone warrior standing at the edge of a cliff at sunset\"}')",
+      "Bash(npm run:*)",
+      "Bash(curl -s http://localhost:3001/api/analyze -X POST -H \"Content-Type: application/json\" -d '{\"inputText\":\"画一个苹果\"}')",
+      "Bash(curl -s http://localhost:3001/api/analyze -X POST -H \"Content-Type: application/json\" -d '{\"inputText\":\"人工智能正在改变医疗行业。通过深度学习算法，AI系统能够分析医学影像，识别早期癌症迹象，准确率已超过资深医生。这不仅提高了诊断效率，也让偏远地区的患者获得更好的医疗服务。\"}')",
+      "Bash(curl -s http://localhost:3001/api/analyze -X POST -H \"Content-Type: application/json\" -d '{\"inputText\":\"draw a red apple on a white table\"}')",
+      "Bash(curl -s http://localhost:3001/api/analyze -X POST -H \"Content-Type: application/json\" -d '{\"inputText\":\"给我画一个红苹果\"}')",
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(npm run *)",
+      "Read(//tmp/**)",
+      "Bash(curl -s http://localhost:3001/api/analyze -X POST -H \"Content-Type: application/json\" -d '{\"inputText\":\"画一个孤独的灯塔，海浪拍打礁石，暴风雨夜晚\"}')",
+      "Bash(curl -s http://localhost:3001/api/analyze -X POST -H \"Content-Type: application/json\" -d '{\"inputText\":\"量子计算机通过操控量子比特的叠加态和纠缠效应，以指数级的速度解决传统计算机需要数百年才能完成的问题。\"}')",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(curl -s http://localhost:3001/api/analyze -X POST -H \"Content-Type: application/json\" -d '{\"inputText\":\"test\"}')"
+    ]
+  }
+}
