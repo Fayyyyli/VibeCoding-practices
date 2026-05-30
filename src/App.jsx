@@ -18,7 +18,16 @@ export default function App() {
   const [genStatus,       setGenStatus]       = useState('')
   const [builtPrompt,     setBuiltPrompt]     = useState('')
   const [builtFragments,  setBuiltFragments]  = useState([])
-  const [outputSettings,  setOutputSettings]  = useState({ aspectRatio: '1:1', imageSize: '1K' })
+  const [outputSettings,         setOutputSettings]         = useState({ aspectRatio: '1:1', imageSize: '1K' })
+  const [imageGenerationEnabled, setImageGenerationEnabled] = useState(false)
+
+  // ── Fetch runtime config ──────────────────────────────────
+  useEffect(() => {
+    fetch('/api/config')
+      .then(r => r.json())
+      .then(cfg => setImageGenerationEnabled(cfg.imageGenerationEnabled ?? false))
+      .catch(() => setImageGenerationEnabled(false))
+  }, [])
 
   // ── Rebuild prompt whenever brief changes ─────────────────
   useEffect(() => {
@@ -119,6 +128,7 @@ export default function App() {
       onBriefChange={handleBriefChange}
       outputSettings={outputSettings}
       onOutputSettingsChange={setOutputSettings}
+      imageGenerationEnabled={imageGenerationEnabled}
       isGenerating={isGenerating}
       onGenerate={handleGenerate}
     />

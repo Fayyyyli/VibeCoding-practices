@@ -9,6 +9,7 @@ export default function VisionBuilder({
   isAnalyzing, onAnalyze,
   brief, fragments, onBriefChange,
   outputSettings, onOutputSettingsChange,
+  imageGenerationEnabled,
   isGenerating, onGenerate,
 }) {
   const [activeTab, setActiveTab] = useState('text')
@@ -88,13 +89,20 @@ export default function VisionBuilder({
                 {isAnalyzing ? 'Analyzing...' : 'Reframe'}
               </button>
               {!brief.blocked && (
-                <button
-                  className="btn btn-primary"
-                  onClick={onGenerate}
-                  disabled={isGenerating}
-                >
-                  {isGenerating ? 'Generating...' : 'Generate →'}
-                </button>
+                imageGenerationEnabled ? (
+                  <button
+                    className="btn btn-primary"
+                    onClick={onGenerate}
+                    disabled={isGenerating}
+                  >
+                    {isGenerating ? 'Generating...' : 'Generate →'}
+                  </button>
+                ) : (
+                  <p className="vf-generate-disabled">
+                    VibeFrame's output is this structured prompt — ready to paste into any image model.
+                    Image generation is turned off in this public demo.
+                  </p>
+                )
               )}
             </div>
           </div>

@@ -667,6 +667,17 @@ body {
   color: rgba(107, 106, 103, 0.5);
 }
 
+/* Image generation disabled message */
+.vf-generate-disabled {
+  font-family: var(--font);
+  font-size: 13px;
+  color: var(--fg-2);
+  text-align: center;
+  line-height: 1.7;
+  max-width: 380px;
+  margin: 0;
+}
+
 /* ── Generate bar ────────────────────────────────────────── */
 .vf-generate-bar {
   margin-top: auto;

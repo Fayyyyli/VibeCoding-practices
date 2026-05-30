@@ -169,8 +169,22 @@ app.post('/api/analyze', async (req, res) => {
   }
 })
 
+// ── /api/config — exposes runtime flags to the frontend ──────
+app.get('/api/config', (req, res) => {
+  res.json({
+    imageGenerationEnabled: (process.env.IMAGE_GENERATION || 'disabled') === 'enabled',
+  })
+})
+
 // ── /api/generate — Gemini image generation ──────────────────
 app.post('/api/generate', async (req, res) => {
+  if ((process.env.IMAGE_GENERATION || 'disabled') !== 'enabled') {
+    return res.status(403).json({
+      error: 'image_generation_disabled',
+      message: 'Image generation is disabled in this deployment.',
+    })
+  }
+
   const { prompt, imageDatas, outputSettings } = req.body
   if (!prompt?.trim()) {
     return res.status(400).json({ error: 'prompt is required' })
