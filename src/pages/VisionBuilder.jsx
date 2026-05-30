@@ -7,13 +7,15 @@ export default function VisionBuilder({
   inputText, setInputText,
   referenceImages, onImagesChange,
   isAnalyzing, onAnalyze,
-  brief, builtPrompt, onPromptChange,
+  brief, fragments, onBriefChange,
+  outputSettings, onOutputSettingsChange,
   isGenerating, onGenerate,
 }) {
   const [activeTab, setActiveTab] = useState('text')
   const [isDragOver, setIsDragOver] = useState(false)
 
   const hasAnalysis = brief !== null
+  const canAnalyze = !isAnalyzing && (inputText.trim().length > 0 || referenceImages.length > 0)
 
   return (
     <div className="page">
@@ -53,7 +55,7 @@ export default function VisionBuilder({
               <button
                 className="btn btn-primary"
                 onClick={onAnalyze}
-                disabled={isAnalyzing || !inputText.trim()}
+                disabled={!canAnalyze}
               >
                 {isAnalyzing ? 'Analyzing...' : 'Analyze'}
               </button>
@@ -65,14 +67,15 @@ export default function VisionBuilder({
         {hasAnalysis && (
           <div className="vf-split-right">
             <div className="vf-col-header">
-              <span className="vf-label" style={{ marginBottom: 0 }}>Analysis</span>
+              <span className="vf-label" style={{ marginBottom: 0 }}>Visual Brief</span>
             </div>
 
             <BriefPanel
               brief={brief}
-              builtPrompt={builtPrompt}
-              onPromptChange={onPromptChange}
-              showPrompt
+              fragments={fragments}
+              onBriefChange={onBriefChange}
+              outputSettings={outputSettings}
+              onOutputSettingsChange={onOutputSettingsChange}
             />
 
             {/* Re-analyze + Generate side by side */}
@@ -80,7 +83,7 @@ export default function VisionBuilder({
               <button
                 className="btn btn-outline"
                 onClick={onAnalyze}
-                disabled={isAnalyzing || !inputText.trim()}
+                disabled={!canAnalyze}
               >
                 {isAnalyzing ? 'Analyzing...' : 'Reframe'}
               </button>

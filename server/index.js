@@ -5,99 +5,186 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 const app = express()
-app.use(express.json())
+app.use(express.json({ limit: '20mb' }))
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-const SYSTEM_PROMPT = `You are a Full-Intent Visual Translator for VibeFrame / NanoBanana. Your job is to decode any user input and produce a single professional English image-generation prompt. Return ONLY valid JSON — no markdown, no explanation.
+const SYSTEM_PROMPT = `You convert a user's creative request into a structured Visual Brief for an image-generation tool. You do TWO things only:
 
-STEP 1 — DRAW COMMAND CHECK (before anything else):
-Scan input for: draw, paint, make, render, generate, create, 画, 生成, 画一个, 给我画, 帮我画, 来一张, 来个
-If ANY match → intentType = "DirectDraw".
+1. Write a one-sentence plain-English restatement of what you understand the user wants. No jargon. This is shown to the user to confirm you understood.
 
-STEP 2 — CLASSIFY REMAINING:
-- 3+ sentences / article / structured prose → "Article"
-- Short visual description (1-2 sentences) → "DirectDraw"
-- Pure small talk / zero visual intent → "Chitchat"
+2. Produce a structured brief as a list of fields. For each field, decide whether its value came FROM THE USER or was INFERRED BY YOU.
 
-OUTPUT:
+FIELDS (always return all seven, in this order):
+  subject       — the main focus
+  setting       — environment, location, background
+  lighting      — light quality, direction, time of day
+  mood          — emotional tone, atmosphere
+  composition   — framing, perspective, focal arrangement
+  color         — palette, dominant hues, contrast
+  detail        — rendering quality, level of detail, finish
 
-For Chitchat:
-{"intentType":"Chitchat","blocked":true,"message":"<short redirect in same language as input>"}
+PROVENANCE RULE — this is the most important part:
+- "user"     = the user explicitly stated this, OR it is a direct, unambiguous restatement of their words (light rewording is fine; "a lone warrior" -> subject "lone warrior" stays "user").
+- "inferred" = you are adding information the user did not state, even if it is a reasonable elaboration of something they implied. Anything you invent, default to, or creatively extend is "inferred."
+- WHEN UNSURE, choose "inferred." Never claim the user said something they did not. Under-claiming user authorship is acceptable; over-claiming is not.
+- A field can be "inferred" even when seeded by the user: if the user said "dying sun" and you render that as "dim amber backlight with cool ash haze," the specific lighting design is YOUR addition -> "inferred."
 
-For Article or DirectDraw:
-{"intentType":"Article"|"DirectDraw","blocked":false,"prompt":"<full English prompt>"}
+OUTPUT FORMAT:
+Return ONLY valid JSON, no markdown, no code fences, no commentary:
+{
+  "intent": "string",
+  "fields": [
+    { "key": "subject", "value": "string", "source": "user" | "inferred" },
+    ... all seven fields ...
+  ]
+}
 
-PROMPT GENERATION RULES — apply ALL of these:
+WORKED EXAMPLE
+User input: "a lone warrior stands at the edge of a crumbling fortress as volcanic ash clouds swallow the dying sun"
 
-1. FULL VISUAL SCAN: Extract every spatial, material, contrast, and metaphorical cue. Never omit elements that imply depth, texture, or atmosphere.
+{
+  "intent": "A lone warrior at the edge of a crumbling fortress, with volcanic ash clouds blotting out a setting sun.",
+  "fields": [
+    { "key": "subject", "value": "a lone warrior, battle-worn, resolute", "source": "user" },
+    { "key": "setting", "value": "edge of a crumbling fortress, volcanic ash clouds, a dying sun on the horizon", "source": "user" },
+    { "key": "lighting", "value": "dim amber backlight from the low sun, diffused through heavy ash haze", "source": "inferred" },
+    { "key": "mood", "value": "apocalyptic, desolate, quietly defiant", "source": "inferred" },
+    { "key": "composition", "value": "warrior silhouetted against the sun, wide cinematic framing, high contrast", "source": "inferred" },
+    { "key": "color", "value": "warm amber against muted grey-brown ash tones", "source": "inferred" },
+    { "key": "detail", "value": "high resolution, sharp, realistic texture", "source": "inferred" }
+  ]
+}
 
-2. ART CONTEXT ALIGNMENT — detect the artistic register and anchor accordingly:
-   - Emotional / narrative text → cinematic composition language, storytelling framing
-   - Art-specific terms (impasto, chiaroscuro, etc.) → reinforce genre technique and brushwork
-   - Physical object descriptions → emphasize material qualities (roughness, reflectivity, translucency)
+Note how most fields are "inferred" here — the user gave a short prompt, so you filled the gaps. That is correct and honest. Do not inflate "user" counts.`
 
-3. PROMPT STRUCTURE (always follow this order):
-   [Style Anchor] + [Subject Details] + [Spatial Structure & Depth] + [Atmospheric & Lighting Logic]
+// "deepseek" (default) | "haiku" — flip in .env to switch models
+const ANALYSIS_MODEL = (process.env.ANALYSIS_MODEL ?? 'deepseek').toLowerCase()
 
-4. DEPTH PROTECTION: If input mentions direction or depth (through, beyond, deep within, background, distance, horizon, receding), wrap that element with weight syntax: (element:1.4) or higher.
+const REQUIRED_KEYS = ['subject', 'setting', 'lighting', 'mood', 'composition', 'color', 'detail']
 
-5. WEIGHT COMPENSATION: Match intensity to input language:
-   - Emphatic adjectives (blazing, towering, shattered) → (term:1.5)
-   - Subtle qualifiers (faint, distant, slight) → (term:0.8)
-   - Neutral terms → no weight modifier
+// Tolerates both bare JSON and ```json fenced responses (safety net for Haiku fallback)
+function parseJson(raw) {
+  let text = raw.trim()
+  const fence = text.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/)
+  if (fence) text = fence[1].trim()
+  return JSON.parse(text)
+}
 
-6. CHROMATIC BALANCE: If warm/cool contrast exists, include both sides. Never flatten opposing colors into one.
+function validateBrief(raw) {
+  const intent = typeof raw.intent === 'string' ? raw.intent.trim() : ''
+  const inputFields = Array.isArray(raw.fields) ? raw.fields : []
+  const fieldMap = Object.fromEntries(inputFields.map(f => [f?.key, f]))
 
-7. QUALITY TAIL: End every prompt with: high resolution, accurate lighting, 1024x1024
+  const fields = REQUIRED_KEYS.map(key => {
+    const f = fieldMap[key]
+    return {
+      key,
+      value: typeof f?.value === 'string' ? f.value.trim() : '',
+      reviewed: f?.source === 'user',   // user-stated → already endorsed; inferred → needs review
+    }
+  })
 
-8. ROBUSTNESS: Whether input is a single emoji, a haiku, a technical article, or a cinematic description — always produce a coherent, maximally expressive prompt. No placeholders.`
+  return { intent, fields }
+}
+
+// Parse an array of data URIs into { mimeType, data } objects
+function parseDataUris(dataUris) {
+  if (!Array.isArray(dataUris)) return []
+  return dataUris.flatMap(uri => {
+    const match = uri?.match(/^data:([^;]+);base64,(.+)$/)
+    return match ? [{ mimeType: match[1], data: match[2] }] : []
+  })
+}
 
 app.post('/api/analyze', async (req, res) => {
-  const { inputText } = req.body
-  if (!inputText?.trim()) {
-    return res.status(400).json({ error: 'inputText is required' })
+  const { inputText, imageDatas } = req.body
+  if (!inputText?.trim() && !imageDatas?.length) {
+    return res.status(400).json({ error: 'inputText or imageDatas is required' })
   }
 
   try {
-    const message = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
-      system: SYSTEM_PROMPT,
-      messages: [
-        { role: 'user', content: inputText },
-        { role: 'assistant', content: '{' },  // prefill forces raw JSON, no code fences
-      ],
-    })
+    const parsedImages = parseDataUris(imageDatas)
+    const textContent = inputText?.trim()
+      ? (parsedImages.length
+          ? `User input (mode: text + image reference):\n"""\n${inputText.trim()}\n"""\n[${parsedImages.length} reference image(s) attached — use for visual style, color, mood reference only]`
+          : `User input (mode: text):\n"""\n${inputText.trim()}\n"""`)
+      : `User input (mode: image):\n[${parsedImages.length} image(s) attached — extract their visual essence for the brief fields]`
 
-    // Prepend the '{' we used as prefill
-    const raw = '{' + message.content[0].text.trim()
-    const brief = JSON.parse(raw)
+    let rawText
+
+    if (ANALYSIS_MODEL === 'haiku') {
+      // ── Haiku path (Anthropic SDK, supports multimodal images) ──
+      const userContent = parsedImages.map(({ mimeType, data }) => ({
+        type: 'image',
+        source: { type: 'base64', media_type: mimeType, data },
+      }))
+      userContent.push({ type: 'text', text: textContent })
+
+      const message = await client.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        temperature: 0.3,
+        system: SYSTEM_PROMPT,
+        messages: [
+          { role: 'user', content: userContent },
+          { role: 'assistant', content: '{' },  // prefill forces JSON start
+        ],
+      })
+      rawText = '{' + message.content[0].text.trim()
+    } else {
+      // ── DeepSeek path (OpenAI-compatible, text only) ──
+      const dsRes = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: 'deepseek-v4-flash',
+          temperature: 0.3,
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user',   content: textContent },
+          ],
+        }),
+      })
+      if (!dsRes.ok) {
+        const err = await dsRes.json().catch(() => ({}))
+        throw new Error(err.error?.message || `DeepSeek API error ${dsRes.status}`)
+      }
+      const dsData = await dsRes.json()
+      rawText = dsData.choices?.[0]?.message?.content ?? ''
+    }
+
+    const brief = validateBrief(parseJson(rawText))
     res.json(brief)
   } catch (err) {
-    console.error('Claude API error:', err.message)
+    console.error('Analysis error:', err.message)
     res.status(500).json({ error: 'Analysis failed', detail: err.message })
   }
 })
 
 // ── /api/generate — Gemini image generation ──────────────────
 app.post('/api/generate', async (req, res) => {
-  const { prompt, imageDatas } = req.body
+  const { prompt, imageDatas, outputSettings } = req.body
   if (!prompt?.trim()) {
     return res.status(400).json({ error: 'prompt is required' })
   }
 
   try {
-    // Build multimodal parts array — text first, then up to 4 reference images
-    const parts = [{ text: prompt }]
+    const parts = [
+      { text: prompt },
+      ...parseDataUris(imageDatas).map(({ mimeType, data }) => ({ inlineData: { mimeType, data } })),
+    ]
 
-    if (Array.isArray(imageDatas)) {
-      for (const imageData of imageDatas) {
-        const match = imageData?.match(/^data:([^;]+);base64,(.+)$/)
-        if (match) {
-          parts.push({ inlineData: { mimeType: match[1], data: match[2] } })
-        }
-      }
+    const imageConfig = {}
+    if (outputSettings?.aspectRatio) imageConfig.aspectRatio = outputSettings.aspectRatio
+    if (outputSettings?.imageSize)   imageConfig.imageSize   = outputSettings.imageSize
+
+    const generationConfig = {
+      responseModalities: ['IMAGE'],
+      ...(Object.keys(imageConfig).length ? { imageConfig } : {}),
     }
 
     const apiRes = await fetch(
@@ -107,7 +194,7 @@ app.post('/api/generate', async (req, res) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts }],
-          generationConfig: { responseModalities: ['IMAGE'] },
+          generationConfig,
         }),
       }
     )

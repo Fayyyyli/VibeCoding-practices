@@ -290,16 +290,20 @@ body {
   overflow-y: auto;
   padding: 24px 20px;
   min-height: 0;
-  scrollbar-width: none;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,0,0,0.15) transparent;
   display: flex;
   flex-direction: column;
 }
 
 .vf-sidebar-brief::-webkit-scrollbar {
-  display: none;
+  width: 4px;
 }
 
-/* Chrome/Safari */
+.vf-sidebar-brief::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.15);
+  border-radius: 2px;
+}
 
 /* Non-scrolling bottom sections */
 .vf-sidebar-bottom {
@@ -530,36 +534,9 @@ body {
 
 }
 
-/* In sidebar: flex chain — brief → wrapper → engine-prompt → textarea */
+/* In sidebar: brief grows to natural height so the parent scrolls */
 .vf-sidebar-brief .vf-brief {
-  flex: 1;
-  min-height: 0;
-}
-
-.vf-sidebar-brief .vf-engine-prompt-wrap {
   flex: none;
-  display: flex;
-  flex-direction: column;
-}
-
-.vf-sidebar-brief .vf-engine-prompt {
-  flex: none;
-  display: flex;
-  flex-direction: column;
-}
-
-.vf-sidebar-brief .vf-engine-prompt-edit {
-  flex: none;
-  min-height: 80px;
-  height: auto;
-  overflow-y: hidden;
-}
-
-.vf-sidebar-brief .vf-intent-heading {
-  margin-left: -20px;
-  margin-right: -20px;
-  padding-left: 20px;
-  padding-right: 20px;
 }
 
 .vf-intent-title {
@@ -1057,4 +1034,277 @@ body {
   .vf-sidebar-overlay {
     display: none;
   }
+}
+
+/* ── BriefPanel Phase 1 ──────────────────────────────────── */
+
+/* Intent restatement sentence */
+.vf-intent-restatement {
+  font-family: var(--font);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--fg);
+  line-height: 1.65;
+  margin: 0 0 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-card);
+}
+
+/* Review-state legend — Fix 4 */
+.vf-provenance-legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-family: var(--font);
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+
+.vf-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.vf-legend-sample--confirmed {
+  color: var(--fg);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.vf-legend-sample--review {
+  color: var(--fg-2);
+  font-weight: 400;
+  font-size: 12px;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+
+/* Helper text — Fix 5 */
+.vf-brief-helper {
+  font-family: var(--font);
+  font-size: 12px;
+  color: var(--fg-3);
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
+/* Field rows container */
+.vf-brief-fields {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-card);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+/* Single field row */
+.vf-brief-field {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border-card);
+  transition: background 80ms ease;
+  min-height: 40px;
+}
+
+.vf-brief-field:last-child {
+  border-bottom: none;
+}
+
+.vf-brief-field--hovered {
+  background: var(--bg-surface);
+}
+
+.vf-brief-field-label {
+  font-family: var(--font-heading);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--fg-2);
+  min-width: 84px;
+  flex-shrink: 0;
+}
+
+/* Field value — display mode */
+.vf-brief-field-value {
+  flex: 1;
+  font-family: var(--font);
+  font-size: 13px;
+  line-height: 1.5;
+  cursor: text;
+  word-break: break-word;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: background 80ms ease;
+}
+
+.vf-brief-field-value:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.vf-brief-field-value--confirmed {
+  color: var(--fg);
+  font-weight: 500;
+}
+
+.vf-brief-field-value--review {
+  color: var(--fg-2);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+
+/* Field value — edit mode */
+.vf-brief-field-edit {
+  flex: 1;
+  font-family: var(--font);
+  font-size: 13px;
+  color: var(--fg);
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  padding: 3px 7px;
+  outline: none;
+  min-width: 0;
+}
+
+.vf-brief-field-edit:focus {
+  border-color: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.06);
+}
+
+/* Per-field controls: ✓ + ✕ — Fix 5 */
+.vf-brief-field-controls {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 80ms ease;
+}
+
+.vf-brief-field:hover .vf-brief-field-controls {
+  opacity: 1;
+}
+
+.vf-brief-field-accept,
+.vf-brief-field-remove {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--fg-2);
+  cursor: pointer;
+  border-radius: 4px;
+  flex-shrink: 0;
+  padding: 0;
+  line-height: 1;
+  transition: color 80ms ease, background 80ms ease;
+}
+
+.vf-brief-field-accept { font-size: 11px; }
+.vf-brief-field-remove { font-size: 13px; }
+
+.vf-brief-field-accept:hover:not(:disabled),
+.vf-brief-field-remove:hover:not(:disabled) {
+  color: var(--fg);
+  background: rgba(0, 0, 0, 0.06);
+}
+
+/* Assembled prompt fragments — Fix 3: uniform, no provenance coloring */
+.vf-prompt-frag {
+  display: inline;
+  border-radius: 2px;
+  padding: 1px 1px;
+  transition: background 80ms ease;
+  cursor: default;
+}
+
+.vf-prompt-frag--lit {
+  background: rgba(0, 0, 0, 0.07);
+  color: var(--fg);
+}
+
+/* Output settings — Fix 6 */
+.vf-output-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-card);
+  border-radius: 8px;
+}
+
+.vf-output-settings-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.vf-output-settings-label {
+  min-width: 52px;
+  margin: 0 !important;
+  flex-shrink: 0;
+}
+
+/* Segmented controls */
+.vf-segmented {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+
+.vf-seg-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 4px 9px;
+  background: var(--bg-card);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--fg-2);
+  cursor: pointer;
+  transition: all 80ms ease;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.vf-seg-btn:hover:not(:disabled) {
+  border-color: rgba(0, 0, 0, 0.25);
+  color: var(--fg);
+}
+
+.vf-seg-btn--active {
+  background: var(--fg);
+  border-color: var(--fg);
+  color: #fff;
+}
+
+.vf-seg-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Aspect ratio glyph — proportional rectangle */
+.vf-ar-glyph {
+  display: inline-block;
+  border: 1.5px solid currentColor;
+  border-radius: 1px;
+  opacity: 0.75;
+  flex-shrink: 0;
 }

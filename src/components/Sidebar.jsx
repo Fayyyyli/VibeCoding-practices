@@ -2,7 +2,8 @@ import BriefPanel from './BriefPanel'
 
 export default function Sidebar({
   open, onToggle,
-  brief, builtPrompt, onPromptChange,
+  brief, fragments, onBriefChange,
+  outputSettings, onOutputSettingsChange,
   onRegenerate, isGenerating,
 }) {
   return (
@@ -12,7 +13,7 @@ export default function Sidebar({
 
         {/* Header — always visible */}
         <div className="vf-sidebar-header">
-          {open && <span className="vf-label" style={{ margin: 0, fontSize: '13px' }}>Prompt</span>}
+          {open && <span className="vf-label" style={{ margin: 0, fontSize: '13px' }}>Visual Brief</span>}
           <button
             className="btn btn-ghost btn-sm"
             onClick={onToggle}
@@ -24,12 +25,14 @@ export default function Sidebar({
 
         {open && (
           <>
-            {/* Scrollable: intent + prompt editor */}
+            {/* Scrollable: intent + fields + assembled prompt */}
             <div className="vf-sidebar-brief">
               <BriefPanel
                 brief={brief}
-                builtPrompt={builtPrompt}
-                onPromptChange={onPromptChange}
+                fragments={fragments}
+                onBriefChange={onBriefChange}
+                outputSettings={outputSettings}
+                onOutputSettingsChange={onOutputSettingsChange}
                 compact
                 disabled={isGenerating}
               />

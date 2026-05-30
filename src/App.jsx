@@ -1,39 +1,55 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import VisionBuilder from './pages/VisionBuilder'
 import Canvas from './pages/Canvas'
 import { generateBrief } from './lib/mockAgent'
+import { buildPrompt } from './lib/promptBuilder'
 
 export default function App() {
   // ── Page routing ──────────────────────────────────────────
-  const [page, setPage] = useState('builder')   // 'builder' | 'canvas'
+  const [page, setPage] = useState('builder')
 
   // ── Core state ────────────────────────────────────────────
-  const [inputText,      setInputText]      = useState('')
+  const [inputText,       setInputText]       = useState('')
   const [referenceImages, setReferenceImages] = useState([])
-  const [brief,          setBrief]          = useState(null)
-  const [outputImages,   setOutputImages]   = useState([])
-  const [isAnalyzing,    setIsAnalyzing]    = useState(false)
-  const [isGenerating,   setIsGenerating]   = useState(false)
-  const [genStatus,      setGenStatus]      = useState('')
-  const [builtPrompt,    setBuiltPrompt]    = useState('')
-  const [sliders,        setSliders]        = useState({ abstractness: 50, detail: 50 })
+  const [brief,           setBrief]           = useState(null)
+  const [outputImages,    setOutputImages]    = useState([])
+  const [isAnalyzing,     setIsAnalyzing]     = useState(false)
+  const [isGenerating,    setIsGenerating]    = useState(false)
+  const [genStatus,       setGenStatus]       = useState('')
+  const [builtPrompt,     setBuiltPrompt]     = useState('')
+  const [builtFragments,  setBuiltFragments]  = useState([])
+  const [outputSettings,  setOutputSettings]  = useState({ aspectRatio: '1:1', imageSize: '1K' })
+
+  // ── Rebuild prompt whenever brief changes ─────────────────
+  useEffect(() => {
+    if (!brief || brief.blocked) {
+      setBuiltPrompt('')
+      setBuiltFragments([])
+      return
+    }
+    const { prompt, fragments } = buildPrompt(brief.fields)
+    setBuiltPrompt(prompt)
+    setBuiltFragments(fragments)
+  }, [brief])
 
   // ── Handlers ──────────────────────────────────────────────
 
   const handleAnalyze = async () => {
-    if (!inputText.trim()) return
+    if (!inputText.trim() && !referenceImages.length) return
     setIsAnalyzing(true)
     setBrief(null)
     setBuiltPrompt('')
+    setBuiltFragments([])
     setOutputImages([])
     try {
-      const result = await generateBrief(inputText)
+      const result = await generateBrief(inputText, referenceImages)
       setBrief(result)
-      if (!result.blocked) setBuiltPrompt(result.prompt ?? '')
     } finally {
       setIsAnalyzing(false)
     }
   }
+
+  const handleBriefChange = (updatedBrief) => setBrief(updatedBrief)
 
   const handleGenerate = async () => {
     setPage('canvas')
@@ -42,8 +58,7 @@ export default function App() {
 
   const handleRegenerate = () => runGeneration()
 
-  const runGeneration = async (promptOverride = null) => {
-    const prompt = promptOverride ?? builtPrompt
+  const runGeneration = async () => {
     setIsGenerating(true)
     setOutputImages([])
     setGenStatus('Generating image...')
@@ -51,7 +66,11 @@ export default function App() {
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, imageDatas: referenceImages.length ? referenceImages : null }),
+        body: JSON.stringify({
+          prompt: builtPrompt,
+          imageDatas: referenceImages.length ? referenceImages : null,
+          outputSettings,
+        }),
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
@@ -68,23 +87,19 @@ export default function App() {
     }
   }
 
-  const handleSliderChange = (key, value) => {
-    setSliders({ ...sliders, [key]: value })
-  }
-
   // ── Render ────────────────────────────────────────────────
 
   if (page === 'canvas') {
     return (
       <Canvas
         brief={brief}
-        builtPrompt={builtPrompt}
-        onPromptChange={setBuiltPrompt}
+        fragments={builtFragments}
+        onBriefChange={handleBriefChange}
+        outputSettings={outputSettings}
+        onOutputSettingsChange={setOutputSettings}
         outputImages={outputImages}
         isGenerating={isGenerating}
         genStatus={genStatus}
-        sliders={sliders}
-        onSliderChange={handleSliderChange}
         onRegenerate={handleRegenerate}
         onBack={() => setPage('builder')}
       />
@@ -100,8 +115,10 @@ export default function App() {
       isAnalyzing={isAnalyzing}
       onAnalyze={handleAnalyze}
       brief={brief}
-      builtPrompt={builtPrompt}
-      onPromptChange={setBuiltPrompt}
+      fragments={builtFragments}
+      onBriefChange={handleBriefChange}
+      outputSettings={outputSettings}
+      onOutputSettingsChange={setOutputSettings}
       isGenerating={isGenerating}
       onGenerate={handleGenerate}
     />

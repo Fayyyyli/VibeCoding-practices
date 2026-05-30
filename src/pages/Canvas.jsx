@@ -4,7 +4,8 @@ import Sidebar from '../components/Sidebar'
 import OutputPanel from '../components/OutputPanel'
 
 export default function Canvas({
-  brief, builtPrompt, onPromptChange,
+  brief, fragments, onBriefChange,
+  outputSettings, onOutputSettingsChange,
   outputImages, isGenerating, genStatus,
   onRegenerate, onBack,
 }) {
@@ -34,7 +35,7 @@ export default function Canvas({
           style={{ marginLeft: 'auto', padding: '6px 8px', fontSize: '13px' }}
           onClick={() => setSidebarOpen(true)}
         >
-          Prompt ☰
+          Brief ☰
         </button>
       </div>
 
@@ -43,8 +44,10 @@ export default function Canvas({
           open={sidebarOpen}
           onToggle={() => setSidebarOpen(o => !o)}
           brief={brief}
-          builtPrompt={builtPrompt}
-          onPromptChange={onPromptChange}
+          fragments={fragments}
+          onBriefChange={onBriefChange}
+          outputSettings={outputSettings}
+          onOutputSettingsChange={onOutputSettingsChange}
           onRegenerate={onRegenerate}
           isGenerating={isGenerating}
         />
