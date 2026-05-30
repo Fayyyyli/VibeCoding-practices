@@ -1,6 +1,10 @@
 import express from 'express'
 import Anthropic from '@anthropic-ai/sdk'
 import dotenv from 'dotenv'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 dotenv.config()
 
@@ -217,6 +221,13 @@ app.post('/api/generate', async (req, res) => {
     console.error('Gemini generate error:', err.message)
     res.status(500).json({ error: 'Generation failed', detail: err.message })
   }
+})
+
+// ── Serve built frontend (production) ────────────────────────
+const distPath = path.join(__dirname, '../dist')
+app.use(express.static(distPath))
+app.get(/^\/(?!api\/).*/, (req, res) => {
+  res.sendFile(path.join(distPath, 'index.html'))
 })
 
 const PORT = process.env.PORT || 3001
